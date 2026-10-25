@@ -34,11 +34,9 @@ jobs:
           tr -d '\n\r' < .github/v306/apply_v306.py.gz.b64 | base64 --decode | gzip -dc > /tmp/apply_v306.py
           echo '3dd9305f89fb993a7fda7c8c87ab15638b4d740fd4e01cedc5e4ab76708bd1ac  /tmp/apply_v306.py' | sha256sum -c -
 
-          echo '30605d8a31c6bcae7666e4bae1a324729c90bb9c88341b61e500945e6498cae2  .github/v307/apply_v307.py.gz.b64' | sha256sum -c -
           tr -d '\n\r' < .github/v307/apply_v307.py.gz.b64 | base64 --decode | gzip -dc > /tmp/apply_v307.py
           echo '8459cd5d4dca9113eddbff6ec5412e3ace2418201843d71140bdac64d66d71c3  /tmp/apply_v307.py' | sha256sum -c -
 
-          echo 'c798551c993259c054d4323b1e6eec1b81ed40817b40e1dfc79e226e605e4bea  .github/v307/lighting-db-v2.js.gz.b64' | sha256sum -c -
           tr -d '\n\r' < .github/v307/lighting-db-v2.js.gz.b64 | base64 --decode | gzip -dc > /tmp/lighting-db-v2.js
           echo '02cb3baa24c7a619a7a2b392dd1809fe007c4412c6f89d14aa8ac21f03229f0b  /tmp/lighting-db-v2.js' | sha256sum -c -
 
