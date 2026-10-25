@@ -25,43 +25,19 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Verify v306 patch chunks
+      - name: Reconstruct and verify v306 patch
         shell: bash
         run: |
           set -euo pipefail
-          cat > /tmp/chunks.sha256 <<'EOF'
-          986229ca02f8d912a9b601e48e395afe211a2b33ddfb3ad3c2b92a481950b971  .github/v306/chunk_00.b64
-          e9d201790dc8e7bf97e99580df91c2cdc3abb8eb9a2bab6186783812ec06b616  .github/v306/chunk_01.b64
-          ddc82d16bbc9bbb2cd2981fe5d5d9867a97941835a9186fc0e829087f92df802  .github/v306/chunk_02.b64
-          a5f509c9a0452c9c4174b02759b7f519b3cde35ade371c81087eefb88da6869e  .github/v306/chunk_03.b64
-          5abf1830487333485b58a38fbf034531f4e9c64e1dd864a489cedcd7f163c091  .github/v306/chunk_04.b64
-          754e7ab5f69cbaa173a67481b9a98ac0c3b46bc317e120df64e80966adf1ddde  .github/v306/chunk_05_0.b64
-          63749cb30545a045f6f14c71e2cbf99169c7984e637c7e362e4ad05098f40f36  .github/v306/chunk_05_1.b64
-          e7cd2ac3e6669a381d09a1c8cadf7cf8fd36017abfe7f6977329543a7d657de6  .github/v306/chunk_06.b64
-          6a7b080884478e7e068e62a164a30a241754980ab6a5c308eeedae84ca75a542  .github/v306/chunk_07.b64
-          6ba4b9c3c39bfbc29a07cc247fa5bf8d5b244b55e5959cc1d27ae32041cdcd57  .github/v306/chunk_08.b64
-          8c15142113a6739c79c395a7364e28e738d426659b7cb1ac009b3a2a529abe8f  .github/v306/chunk_09.b64
-          EOF
-          sha256sum -c /tmp/chunks.sha256
-
-      - name: Reconstruct and inject v306 patch
-        shell: bash
-        run: |
-          set -euo pipefail
-          cat \
-            .github/v306/chunk_00.b64 \
-            .github/v306/chunk_01.b64 \
-            .github/v306/chunk_02.b64 \
-            .github/v306/chunk_03.b64 \
-            .github/v306/chunk_04.b64 \
-            .github/v306/chunk_05_0.b64 \
-            .github/v306/chunk_05_1.b64 \
-            .github/v306/chunk_06.b64 \
-            .github/v306/chunk_07.b64 \
-            .github/v306/chunk_08.b64 \
-            .github/v306/chunk_09.b64 | tr -d '\n\r' | base64 --decode > app/src/main/assets/v306-patch.js
+          echo '6fac530737e23446559018c63d30598814cdb4a4a7def7063f4bbf9426f153d9  .github/v306/v306-patch.js.gz.b64' | sha256sum -c -
+          tr -d '\n\r' < .github/v306/v306-patch.js.gz.b64 | base64 --decode | gzip -dc > app/src/main/assets/v306-patch.js
           echo 'abd40c001b07491e281bd28b2a5e145fa3daaec6a697b45f53f2ac6d683f1ccf  app/src/main/assets/v306-patch.js' | sha256sum -c -
           node --check app/src/main/assets/v306-patch.js
+
+      - name: Inject v306 patch and preflight HTML
+        shell: bash
+        run: |
+          set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
           p=Path('app/src/main/assets/index.html')
@@ -72,13 +48,16 @@ jobs:
                   raise SystemExit('index.html has no </body>')
               s=s.replace('</body>',tag+'\n</body>',1)
           p.write_text(s,encoding='utf-8')
-          if s.rstrip().lower().endswith('</html>') is False:
+          if not s.rstrip().lower().endswith('</html>'):
               raise SystemExit('content after </html>')
+          if s.count('id="gardenMain"') > 1:
+              raise SystemExit('duplicate gardenMain')
           PY
 
       - name: Prepare v306 side-by-side test package
         shell: bash
         run: |
+          set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
           p=Path('app/build.gradle')
