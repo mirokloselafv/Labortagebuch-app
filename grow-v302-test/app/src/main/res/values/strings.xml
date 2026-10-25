@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Grow H5179 Test</string>
+    <string name="widget_description">Live-Klima des Govee H5179: Temperatur, Luftfeuchte, Akku und Signal.</string>
+</resources>
