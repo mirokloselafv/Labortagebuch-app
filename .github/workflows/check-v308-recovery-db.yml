@@ -1,0 +1,27 @@
+name: Check v308 Recovery DB
+
+on:
+  push:
+    branches: [ grow-v308-recovery-build ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct and verify Recovery Final database
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/v308recovery/db_*.b64 | tr -d '\n\r' | base64 --decode > /tmp/lighting-db-v3.xz
+          echo 'b1ff4b240d71d3387d84053ce1cf4a4d3a566a3eccd34e2abe020148bf7dc3f3  /tmp/lighting-db-v3.xz' | sha256sum -c -
+          xz -dc /tmp/lighting-db-v3.xz > /tmp/lighting-db-v3.js
+          echo '6695cf157e1d694f84719c4af778632e8604170a858c687dc98106a9a1adf302  /tmp/lighting-db-v3.js' | sha256sum -c -
+          node --check /tmp/lighting-db-v3.js
+          grep -q 'LIGHTING_PRODUCTS_V3' /tmp/lighting-db-v3.js
+          grep -q 'mergeLightingProductsV3' /tmp/lighting-db-v3.js
+          echo 'RECOVERY_DB_VERIFIED'
