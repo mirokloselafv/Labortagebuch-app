@@ -6,7 +6,6 @@ on:
     paths:
       - 'app/**'
       - '.github/v306/**'
-      - 'scripts/**'
       - '.github/workflows/build-grow-v306-apk.yml'
   workflow_dispatch:
 
@@ -21,7 +20,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -42,25 +41,43 @@ jobs:
           echo '1a4116cf700ba7ce3ad9b4f2dbd4b279b568127140b4b28dfdc64b2f6e47c56b  app/src/main/assets/index.html' | sha256sum -c -
           python3 - <<'PY'
           from pathlib import Path
-          import re, subprocess, collections, tempfile
+          from html.parser import HTMLParser
+          import re, subprocess, collections
+
           p=Path('app/src/main/assets/index.html')
           s=p.read_text(encoding='utf-8')
           if not s.rstrip().lower().endswith('</html>'):
               raise SystemExit('content after </html>')
-          ids=re.findall(r'\bid=["\']([^"\']+)["\']',s)
+
+          class IdParser(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=False)
+                  self.ids=[]
+              def handle_starttag(self, tag, attrs):
+                  for k,v in attrs:
+                      if k == 'id' and v is not None:
+                          self.ids.append(v)
+              def handle_startendtag(self, tag, attrs):
+                  self.handle_starttag(tag, attrs)
+
+          parser=IdParser()
+          parser.feed(s)
+          ids=parser.ids
           dup=[k for k,v in collections.Counter(ids).items() if v>1]
           if dup:
-              raise SystemExit('duplicate IDs: '+', '.join(dup[:20]))
+              raise SystemExit('duplicate static DOM IDs: '+', '.join(dup[:20]))
+
           scripts=re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script\s*>',s,re.I|re.S)
           for i,js in enumerate(scripts):
               f=Path('/tmp')/f'v306_inline_{i}.js'
               f.write_text(js,encoding='utf-8')
               subprocess.run(['node','--check',str(f)],check=True)
+
           required=['calendarBody','calendarToggle','action2Routinecheck','a2SliderPanel','a2RoutineSensorFill','a2RoutineWeightFeelSlider','h5179RangeTabs','h5179CustomFrom','h5179CustomTo']
-          missing=[x for x in required if f'id="{x}"' not in s]
+          missing=[x for x in required if x not in ids]
           if missing:
               raise SystemExit('missing nodes: '+', '.join(missing))
-          print(f'preflight OK: {len(scripts)} inline scripts, {len(ids)} IDs')
+          print(f'preflight OK: {len(scripts)} inline scripts, {len(ids)} static IDs')
           PY
 
       - name: Prepare side-by-side v306 test package
