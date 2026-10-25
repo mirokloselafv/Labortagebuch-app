@@ -1,0 +1,178 @@
+name: Build Grow Tagebuch v311 Sensor Mehr APK
+
+on:
+  push:
+    branches: [ grow-v311-build ]
+    paths:
+      - '.github/workflows/build-grow-v311-sensor-more-apk.yml'
+      - '.github/v311/**'
+      - '.github/v310/**'
+      - '.github/v308recovery/**'
+      - '.github/v306/**'
+      - '.github/v307/**'
+      - '.github/v308/**'
+      - 'app/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Reconstruct verified v306-v311 sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          tr -d '\n\r' < .github/v306/apply_v306.py.gz.b64 | base64 --decode | gzip -dc > /tmp/apply_v306.py
+          echo '3dd9305f89fb993a7fda7c8c87ab15638b4d740fd4e01cedc5e4ab76708bd1ac  /tmp/apply_v306.py' | sha256sum -c -
+          tr -d '\n\r' < .github/v307/apply_v307.py.gz.b64 | base64 --decode | gzip -dc > /tmp/apply_v307.py
+          echo '8459cd5d4dca9113eddbff6ec5412e3ace2418201843d71140bdac64d66d71c3  /tmp/apply_v307.py' | sha256sum -c -
+          cat .github/v307/db_chunk_*.b64 | tr -d '\n\r' | base64 --decode | gzip -dc > /tmp/lighting-db-v2.js
+          echo '02cb3baa24c7a619a7a2b392dd1809fe007c4412c6f89d14aa8ac21f03229f0b  /tmp/lighting-db-v2.js' | sha256sum -c -
+          cat .github/v308/apply_chunk_*.b64 | tr -d '\n\r' | base64 --decode > /tmp/apply_v308.py.gz
+          gzip -dc /tmp/apply_v308.py.gz > /tmp/apply_v308.py
+          echo 'ed6203214cddde515f644267ee673fbc8c5ffcb6f4733069cf9fd0d76c4e3829  /tmp/apply_v308.py' | sha256sum -c -
+          cat .github/v308recovery/db_*.b64 | tr -d '\n\r' | base64 --decode > /tmp/lighting-db-v3.xz
+          echo 'b1ff4b240d71d3387d84053ce1cf4a4d3a566a3eccd34e2abe020148bf7dc3f3  /tmp/lighting-db-v3.xz' | sha256sum -c -
+          xz -dc /tmp/lighting-db-v3.xz > /tmp/lighting-db-v3-original.js
+          echo '6695cf157e1d694f84719c4af778632e8604170a858c687dc98106a9a1adf302  /tmp/lighting-db-v3-original.js' | sha256sum -c -
+          cp /tmp/lighting-db-v3-original.js /tmp/lighting-db-v3.js
+          cat >> /tmp/lighting-db-v3.js <<'BRIDGE'
+          ;window.LIGHTING_DB_V3_META=LIGHTING_DB_V3_META;
+          window.LIGHTING_PRODUCTS_V3=LIGHTING_PRODUCTS_V3;
+          window.LIGHTING_MAKER_ORDER_V3=LIGHTING_MAKER_ORDER_V3;
+          window.normalizeLightingMakerV3=normalizeLightingMakerV3;
+          window.mergeLightingProductsV3=mergeLightingProductsV3;
+          window.lightingProductsByMakerV3=lightingProductsByMakerV3;
+          window.lightingSeriesByMakerV3=lightingSeriesByMakerV3;
+          window.lightingImageForV3=lightingImageForV3;
+          BRIDGE
+          tr -d '\n\r' < .github/v310/apply_v310.py.gz.b64 | base64 --decode | gzip -dc > /tmp/apply_v310.py
+          echo '33b4ea1c2199f5c39699c7b145bd6c25f7e812402aed17b8f3fa46064fdd87f8  /tmp/apply_v310.py' | sha256sum -c -
+          tr -d '\n\r' < .github/v311/v311bundle.tar.gz.b64 | base64 --decode > /tmp/v311bundle.tar.gz
+          echo '2c262a57ec2b0c8c2def312bd72c2f159c465571b0f9aa4045c002f8e5bc6334  /tmp/v311bundle.tar.gz' | sha256sum -c -
+          mkdir -p /tmp/v311bundle
+          tar -xzf /tmp/v311bundle.tar.gz -C /tmp/v311bundle
+          echo 'ff643d3487b07e6d9c712cb61762cf45c75f2ef2431ec52500c6e4f1055cc0c1  /tmp/v311bundle/apply_v311.py' | sha256sum -c -
+          echo 'b2b30b7213fcde4332c5fca751af267577a45d3ea3f96db119cdb6653c707d7a  /tmp/v311bundle/MainActivity.java' | sha256sum -c -
+          echo 'e0416e3a272f15471f921fed8276b2bc7123512c2c01e8fa94815ff994a48245  /tmp/v311bundle/H5179ScanService.java' | sha256sum -c -
+          echo 'e9d257edc3f392825ddd4b07a9417ce118671024b66868edfc388e61207ae68e  /tmp/v311bundle/SensorDbHelper.java' | sha256sum -c -
+          python3 -m py_compile /tmp/apply_v306.py /tmp/apply_v307.py /tmp/apply_v308.py /tmp/apply_v310.py /tmp/v311bundle/apply_v311.py
+
+      - name: Build v311 app assets and native sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 /tmp/apply_v306.py
+          python3 /tmp/apply_v307.py app/src/main/assets/index.html app/src/main/assets/index.html
+          cp /tmp/lighting-db-v2.js app/src/main/assets/lighting-db-v2.js
+          python3 /tmp/apply_v308.py app/src/main/assets/index.html app/src/main/assets/index.html
+          cp /tmp/lighting-db-v3.js app/src/main/assets/lighting-db-v3.js
+          rm -f app/src/main/assets/lighting-db-v2.js
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app/src/main/assets/index.html'); s=p.read_text(encoding='utf-8')
+          old='function uniq(rows,key,arr=False)'; new='function uniq(rows,key,arr=false)'
+          if old not in s or s.count(old)!=1: raise SystemExit('v309 target invalid')
+          s=s.replace(old,new,1)
+          s=s.replace('window.GROW_APP_VERSION="v308-lighting-db-v3-recovery";','window.GROW_APP_VERSION="v309-lighting-navigation-fix";',1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          python3 /tmp/apply_v310.py app/src/main/assets/index.html
+          python3 /tmp/v311bundle/apply_v311.py app/src/main/assets/index.html
+          cp /tmp/v311bundle/MainActivity.java app/src/main/java/de/harryjane/growtagebuch/MainActivity.java
+          cp /tmp/v311bundle/H5179ScanService.java app/src/main/java/de/harryjane/growtagebuch/H5179ScanService.java
+          cp /tmp/v311bundle/SensorDbHelper.java app/src/main/java/de/harryjane/growtagebuch/SensorDbHelper.java
+
+      - name: Full v311 root cause preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check app/src/main/assets/lighting-db-v3.js
+          python3 - <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+          import re, subprocess, collections
+          s=Path('app/src/main/assets/index.html').read_text(encoding='utf-8')
+          if not s.rstrip().lower().endswith('</html>'): raise SystemExit('content after </html>')
+          if s.lower().count('</html>') != 1: raise SystemExit('closing html count')
+          if 'arr=False' in s: raise SystemExit('v309 regression')
+          if 'v311-sensor-sync-more-restructure' not in s: raise SystemExit('v311 marker missing')
+          class P(HTMLParser):
+              def __init__(self): super().__init__(convert_charrefs=False); self.ids=[]
+              def handle_starttag(self,t,a): self.ids += [v for k,v in a if k=='id' and v]
+              def handle_startendtag(self,t,a): self.handle_starttag(t,a)
+          p=P(); p.feed(s)
+          dup=[k for k,v in collections.Counter(p.ids).items() if v>1]
+          if dup: raise SystemExit('duplicate DOM IDs '+str(dup[:20]))
+          scripts=re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script\s*>',s,re.I|re.S)
+          for i,x in enumerate(scripts):
+              f=Path('/tmp')/f'v311_inline_{i}.js'; f.write_text(x,encoding='utf-8'); subprocess.run(['node','--check',str(f)],check=True)
+          required=['calendarBody','calendarToggle','materialEntries','view-data-backup','view-system-tools','h5179SyncHistory','h5179SyncStatus','a2RoutineSensorFill']
+          miss=[x for x in required if x not in p.ids]
+          if miss: raise SystemExit('missing nodes '+str(miss))
+          markers=['function latestSensorReading','syncH5179History','getHistorySyncStatus','exportSensorCsv','importHistory','saveTextFile','const filtered=filterRows(all||[])','GrowAppBack']
+          miss=[x for x in markers if x not in s]
+          if miss: raise SystemExit('missing v311 markers '+str(miss))
+          print('V311 HTML PREFLIGHT OK',len(scripts),'scripts',len(p.ids),'IDs')
+          PY
+          grep -q 'ACTION_SYNC_HISTORY' app/src/main/java/de/harryjane/growtagebuch/H5179ScanService.java
+          grep -q 'return START_STICKY' app/src/main/java/de/harryjane/growtagebuch/H5179ScanService.java
+          grep -q 'history_auto_sync' app/src/main/java/de/harryjane/growtagebuch/H5179ScanService.java
+          grep -q 'getHistorySyncStatus' app/src/main/java/de/harryjane/growtagebuch/MainActivity.java
+          grep -q 'saveTextFile' app/src/main/java/de/harryjane/growtagebuch/MainActivity.java
+          grep -q 'importHistory' app/src/main/java/de/harryjane/growtagebuch/MainActivity.java
+
+      - name: Prepare side by side v311 package
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('app/build.gradle'); s=p.read_text()
+          s=s.replace("applicationId 'de.harryjane.growtagebuch'", "applicationId 'de.harryjane.growtagebuch.v311test'")
+          s=re.sub(r'versionCode\s+\d+','versionCode 311',s,count=1)
+          s=re.sub(r"versionName\s+'[^']+'","versionName '311-sensor-sync-more'",s,count=1)
+          p.write_text(s)
+          m=Path('app/src/main/AndroidManifest.xml'); t=m.read_text()
+          if 'android.permission.INTERNET' not in t:
+              i=t.find('>')+1; t=t[:i]+'\n    <uses-permission android:name="android.permission.INTERNET" />'+t[i:]
+          t=t.replace('android:label="Grow-Tagebuch"','android:label="Grow-Tagebuch v311 Test"')
+          m.write_text(t)
+          PY
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Build APK
+        run: gradle --no-daemon assembleDebug
+      - name: Verify packaged APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp app/build/outputs/apk/debug/app-debug.apk Grow-Tagebuch-v311-Sensor-Mehr-Test.apk
+          unzip -t Grow-Tagebuch-v311-Sensor-Mehr-Test.apk >/dev/null
+          unzip -p Grow-Tagebuch-v311-Sensor-Mehr-Test.apk assets/index.html > /tmp/apk-index.html
+          grep -q 'v311-sensor-sync-more-restructure' /tmp/apk-index.html
+          grep -q 'view-data-backup' /tmp/apk-index.html
+          grep -q 'h5179SyncHistory' /tmp/apk-index.html
+          grep -q 'function latestSensorReading' /tmp/apk-index.html
+          unzip -p Grow-Tagebuch-v311-Sensor-Mehr-Test.apk assets/lighting-db-v3.js > /tmp/apk-db.js
+          node --check /tmp/apk-db.js
+          grep -q 'LIGHTING_PRODUCTS_V3' /tmp/apk-db.js
+          echo 'V311 APK CONTENT VERIFIED'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Grow-Tagebuch-v311-Sensor-Mehr-Test-APK
+          path: Grow-Tagebuch-v311-Sensor-Mehr-Test.apk
+          if-no-files-found: error
+          retention-days: 30
