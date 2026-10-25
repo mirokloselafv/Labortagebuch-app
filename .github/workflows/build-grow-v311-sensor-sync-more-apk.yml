@@ -34,18 +34,14 @@ jobs:
           set -euo pipefail
           tr -d '\n\r' < .github/v306/apply_v306.py.gz.b64 | base64 --decode | gzip -dc > /tmp/apply_v306.py
           echo '3dd9305f89fb993a7fda7c8c87ab15638b4d740fd4e01cedc5e4ab76708bd1ac  /tmp/apply_v306.py' | sha256sum -c -
-
           tr -d '\n\r' < .github/v307/apply_v307.py.gz.b64 | base64 --decode | gzip -dc > /tmp/apply_v307.py
           echo '8459cd5d4dca9113eddbff6ec5412e3ace2418201843d71140bdac64d66d71c3  /tmp/apply_v307.py' | sha256sum -c -
-
           cat .github/v307/db_chunk_*.b64 | tr -d '\n\r' | base64 --decode | gzip -dc > /tmp/lighting-db-v2.js
           echo '02cb3baa24c7a619a7a2b392dd1809fe007c4412c6f89d14aa8ac21f03229f0b  /tmp/lighting-db-v2.js' | sha256sum -c -
-
           cat .github/v308/apply_chunk_*.b64 | tr -d '\n\r' | base64 --decode > /tmp/apply_v308.py.gz
           gzip -dc /tmp/apply_v308.py.gz > /tmp/apply_v308.py
           echo 'ed6203214cddde515f644267ee673fbc8c5ffcb6f4733069cf9fd0d76c4e3829  /tmp/apply_v308.py' | sha256sum -c -
           python3 -m py_compile /tmp/apply_v308.py
-
           cat .github/v308recovery/db_*.b64 | tr -d '\n\r' | base64 --decode > /tmp/lighting-db-v3.xz
           echo 'b1ff4b240d71d3387d84053ce1cf4a4d3a566a3eccd34e2abe020148bf7dc3f3  /tmp/lighting-db-v3.xz' | sha256sum -c -
           xz -dc /tmp/lighting-db-v3.xz > /tmp/lighting-db-v3-original.js
@@ -63,18 +59,18 @@ jobs:
           window.lightingImageForV3=lightingImageForV3;
           BRIDGE
           node --check /tmp/lighting-db-v3.js
-
           tr -d '\n\r' < .github/v310/apply_v310.py.gz.b64 | base64 --decode | gzip -dc > /tmp/apply_v310.py
           echo '33b4ea1c2199f5c39699c7b145bd6c25f7e812402aed17b8f3fa46064fdd87f8  /tmp/apply_v310.py' | sha256sum -c -
           python3 -m py_compile /tmp/apply_v310.py
-
           echo 'd09545f908fe5bd99d820dcfa9bf845d6f3f57d3e154a7f56e7f9cda30459ab9  .github/v311/apply_v311.py.gz.b64' | sha256sum -c -
           tr -d '\n\r' < .github/v311/apply_v311.py.gz.b64 | base64 --decode | gzip -dc > /tmp/apply_v311.py
           echo '2966f5d636f5c11782ed9f928f50cbe036cdd554d0f17d280b23c274383fc83f  /tmp/apply_v311.py' | sha256sum -c -
           python3 -m py_compile /tmp/apply_v311.py
-
-          echo 'b3576e335fb8f036a9678f69864c52ed58f6cb1d3125c24f57edc28e9cc68697  .github/v311/native-v311.tar.gz.b64' | sha256sum -c -
-          tr -d '\n\r' < .github/v311/native-v311.tar.gz.b64 | base64 --decode > /tmp/native-v311.tar.gz
+          echo '57410ae7b6ff983c66c1ff46d4e27542afce7a78d244a81474dfa7b6e63c42d6  .github/v311/native_parts/part_00.b64' | sha256sum -c -
+          echo '368c9ba91f6db9745d38927bd991dabd8b84e23250972d9c5c8f3c0a4268072f  .github/v311/native_parts/part_01.b64' | sha256sum -c -
+          echo '6fd664563238941c66e44d370c365d840cd27381316a73a2a1d81437ccfcaad5  .github/v311/native_parts/part_02.b64' | sha256sum -c -
+          echo '807ff4fa2776b3407b153837a40ba1c1dc30aee867004be8621db5c7cee78974  .github/v311/native_parts/part_03.b64' | sha256sum -c -
+          cat .github/v311/native_parts/part_*.b64 | tr -d '\n\r' | base64 --decode > /tmp/native-v311.tar.gz
           echo 'a5bbf6fca2fa74365474413e64a91f5ebdecd95ea4135a79090122feadae7869  /tmp/native-v311.tar.gz' | sha256sum -c -
           mkdir -p /tmp/native-v311
           tar -xzf /tmp/native-v311.tar.gz -C /tmp/native-v311
@@ -89,15 +85,12 @@ jobs:
           set -euo pipefail
           python3 /tmp/apply_v306.py
           echo '1a4116cf700ba7ce3ad9b4f2dbd4b279b568127140b4b28dfdc64b2f6e47c56b  app/src/main/assets/index.html' | sha256sum -c -
-
           python3 /tmp/apply_v307.py app/src/main/assets/index.html app/src/main/assets/index.html
           cp /tmp/lighting-db-v2.js app/src/main/assets/lighting-db-v2.js
           echo '9e6e45647ecfac643463b7b15b14c36a6e5da6797e348f91e03645ef36f1fad5  app/src/main/assets/index.html' | sha256sum -c -
-
           python3 /tmp/apply_v308.py app/src/main/assets/index.html app/src/main/assets/index.html
           cp /tmp/lighting-db-v3.js app/src/main/assets/lighting-db-v3.js
           rm -f app/src/main/assets/lighting-db-v2.js
-
           python3 - <<'PY'
           from pathlib import Path
           p=Path('app/src/main/assets/index.html')
@@ -108,11 +101,9 @@ jobs:
           s=s.replace('window.GROW_APP_VERSION="v308-lighting-db-v3-recovery";','window.GROW_APP_VERSION="v309-lighting-navigation-fix";',1)
           p.write_text(s,encoding='utf-8')
           PY
-
           python3 /tmp/apply_v310.py app/src/main/assets/index.html
           python3 /tmp/apply_v311.py app/src/main/assets/index.html
           echo 'c1ac8a6bbb2ef00493a21d41f998907833b93dcb35f7bca45a3d5fb2542c6d7c  app/src/main/assets/index.html' | sha256sum -c -
-
           cp /tmp/native-v311/H5179HistorySync.java app/src/main/java/de/harryjane/growtagebuch/H5179HistorySync.java
           cp /tmp/native-v311/H5179ScanService.java app/src/main/java/de/harryjane/growtagebuch/H5179ScanService.java
           cp /tmp/native-v311/MainActivity.java app/src/main/java/de/harryjane/growtagebuch/MainActivity.java
@@ -124,17 +115,8 @@ jobs:
           set -euo pipefail
           node --check app/src/main/assets/lighting-db-v3.js
           node - <<'JS'
-          const fs=require('fs'),vm=require('vm');
-          const ctx={};ctx.window=ctx;vm.createContext(ctx);
-          vm.runInContext(fs.readFileSync('app/src/main/assets/lighting-db-v3.js','utf8'),ctx);
-          const r=ctx.LIGHTING_PRODUCTS_V3;
-          if(!Array.isArray(r)||r.length!==347) throw Error('347 lighting records required');
-          if(new Set(r.map(x=>x.id)).size!==347) throw Error('lighting IDs not unique');
-          if(new Set(r.map(x=>x.maker)).size!==20) throw Error('20 makers required');
-          if(r.filter(x=>x.maker==='SANlight').length!==55) throw Error('55 SANlight required');
-          console.log('LIGHTING DB OK',r.length,'records');
+          const fs=require('fs'),vm=require('vm'); const ctx={};ctx.window=ctx;vm.createContext(ctx); vm.runInContext(fs.readFileSync('app/src/main/assets/lighting-db-v3.js','utf8'),ctx); const r=ctx.LIGHTING_PRODUCTS_V3; if(!Array.isArray(r)||r.length!==347) throw Error('347 lighting records required'); if(new Set(r.map(x=>x.id)).size!==347) throw Error('lighting IDs not unique'); if(new Set(r.map(x=>x.maker)).size!==20) throw Error('20 makers required'); if(r.filter(x=>x.maker==='SANlight').length!==55) throw Error('55 SANlight required'); console.log('LIGHTING DB OK',r.length,'records');
           JS
-
           python3 - <<'PY'
           from pathlib import Path
           from html.parser import HTMLParser
@@ -148,12 +130,11 @@ jobs:
               def __init__(self): super().__init__(convert_charrefs=False); self.ids=[]
               def handle_starttag(self,t,a): self.ids += [v for k,v in a if k=='id' and v]
               def handle_startendtag(self,t,a): self.handle_starttag(t,a)
-          p=P();p.feed(s)
-          dup=[k for k,v in collections.Counter(p.ids).items() if v>1]
+          p=P();p.feed(s); dup=[k for k,v in collections.Counter(p.ids).items() if v>1]
           if dup: raise SystemExit('duplicate static DOM IDs: '+', '.join(dup[:20]))
           scripts=re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script\s*>',s,re.I|re.S)
           for i,x in enumerate(scripts):
-              f=Path('/tmp')/f'v311_inline_{i}.js';f.write_text(x,encoding='utf-8');subprocess.run(['node','--check',str(f)],check=True)
+              f=Path('/tmp')/f'v311_inline_{i}.js'; f.write_text(x,encoding='utf-8'); subprocess.run(['node','--check',str(f)],check=True)
           required_ids=['calendarBody','calendarToggle','action2Routinecheck','a2RoutineSensorFill','h5179RangeTabs','materialEntries','view-backup','h5179SyncHistory','resetSensorHistoryBtn']
           miss=[x for x in required_ids if x not in p.ids]
           if miss: raise SystemExit('required DOM missing: '+', '.join(miss))
@@ -170,7 +151,6 @@ jobs:
           print('V311 HTML PREFLIGHT OK:',len(scripts),'inline scripts /',len(p.ids),'unique IDs')
           print('ROOT-CAUSE REVIEW: render/navigation/DOM/listeners/closing-html OK')
           PY
-
           grep -q 'START_STICKY' app/src/main/java/de/harryjane/growtagebuch/H5179ScanService.java
           grep -q 'watchdog' app/src/main/java/de/harryjane/growtagebuch/H5179ScanService.java
           grep -q 'ACTION_SYNC_HISTORY' app/src/main/java/de/harryjane/growtagebuch/H5179ScanService.java
@@ -194,16 +174,11 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-          p=Path('app/build.gradle');s=p.read_text()
-          s=s.replace("applicationId 'de.harryjane.growtagebuch'", "applicationId 'de.harryjane.growtagebuch.v311test'")
-          s=re.sub(r'versionCode\s+\d+','versionCode 311',s,count=1)
-          s=re.sub(r"versionName\s+'[^']+'","versionName '311-sensor-sync-more'",s,count=1)
-          p.write_text(s)
-          m=Path('app/src/main/AndroidManifest.xml');t=m.read_text()
+          p=Path('app/build.gradle');s=p.read_text();s=s.replace("applicationId 'de.harryjane.growtagebuch'", "applicationId 'de.harryjane.growtagebuch.v311test'");s=re.sub(r'versionCode\s+\d+','versionCode 311',s,count=1);s=re.sub(r"versionName\s+'[^']+'","versionName '311-sensor-sync-more'",s,count=1);p.write_text(s)
+          m=Path('app/src/main/AndroidManifest.xml');t=m.read_text();
           if 'android.permission.INTERNET' not in t:
               i=t.find('>')+1;t=t[:i]+'\n    <uses-permission android:name="android.permission.INTERNET" />'+t[i:]
-          t=t.replace('android:label="Grow-Tagebuch"','android:label="Grow-Tagebuch v311 Test"')
-          m.write_text(t)
+          t=t.replace('android:label="Grow-Tagebuch"','android:label="Grow-Tagebuch v311 Test"');m.write_text(t)
           PY
           grep -q "applicationId 'de.harryjane.growtagebuch.v311test'" app/build.gradle
           grep -q 'versionCode 311' app/build.gradle
