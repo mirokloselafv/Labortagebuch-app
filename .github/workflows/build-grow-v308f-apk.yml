@@ -1,0 +1,120 @@
+name: Build Grow Tagebuch v308F Recovery APK
+on:
+  push:
+    branches: [ grow-v308-build ]
+    paths:
+      - '.github/workflows/build-grow-v308f-apk.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: grow-v308-build }
+      - uses: actions/setup-java@v5
+        with: { distribution: temurin, java-version: '17' }
+      - name: Reconstruct verified sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          tr -d '\n\r' < .github/v306/apply_v306.py.gz.b64 | base64 -d | gzip -dc > /tmp/v306.py
+          echo '3dd9305f89fb993a7fda7c8c87ab15638b4d740fd4e01cedc5e4ab76708bd1ac  /tmp/v306.py' | sha256sum -c -
+          tr -d '\n\r' < .github/v307/apply_v307.py.gz.b64 | base64 -d | gzip -dc > /tmp/v307.py
+          echo '8459cd5d4dca9113eddbff6ec5412e3ace2418201843d71140bdac64d66d71c3  /tmp/v307.py' | sha256sum -c -
+          cat .github/v307/db_chunk_*.b64 | tr -d '\n\r' | base64 -d | gzip -dc > /tmp/dbv2.js
+          echo '02cb3baa24c7a619a7a2b392dd1809fe007c4412c6f89d14aa8ac21f03229f0b  /tmp/dbv2.js' | sha256sum -c -
+          cat .github/v308/apply_chunk_*.b64 | tr -d '\n\r' | base64 -d | gzip -dc > /tmp/v308.py
+          echo 'ed6203214cddde515f644267ee673fbc8c5ffcb6f4733069cf9fd0d76c4e3829  /tmp/v308.py' | sha256sum -c -
+          {
+            cat .github/v308xz/chunk_000.b64 .github/v308xz/chunk_001.b64 .github/v308xz/chunk_002.b64 .github/v308xz/chunk_003.b64 .github/v308xz/chunk_004.b64
+            cat .github/v308xz/005parts/p_00.b64 .github/v308xz/005parts/p_01.b64 .github/v308xz/005parts/p_02.b64
+            cat .github/v308xz/005parts/p03/s_00.b64 .github/v308xz/005parts/p03/s_01.b64 .github/v308xz/005parts/p03/s_02.b64 .github/v308xz/005parts/p03/s_03.b64 .github/v308xz/005parts/p03/s_04.b64
+            cat .github/v308xz/005parts/p_04.b64
+            cat .github/v308xz/chunk_006.b64 .github/v308xz/chunk_007.b64 .github/v308xz/chunk_008.b64 .github/v308xz/chunk_009.b64 .github/v308xz/chunk_010.b64 .github/v308xz/chunk_011.b64
+          } | tr -d '\n\r' | base64 -d > /tmp/dbv3.js.xz
+          echo 'b1ff4b240d71d3387d84053ce1cf4a4d3a566a3eccd34e2abe020148bf7dc3f3  /tmp/dbv3.js.xz' | sha256sum -c -
+          xz -dc /tmp/dbv3.js.xz > /tmp/dbv3.js
+          echo '6695cf157e1d694f84719c4af778632e8604170a858c687dc98106a9a1adf302  /tmp/dbv3.js' | sha256sum -c -
+          python3 -m py_compile /tmp/v306.py /tmp/v307.py /tmp/v308.py
+      - name: Apply v306 v307 v308 and bridge database
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 /tmp/v306.py
+          echo '1a4116cf700ba7ce3ad9b4f2dbd4b279b568127140b4b28dfdc64b2f6e47c56b  app/src/main/assets/index.html' | sha256sum -c -
+          python3 /tmp/v307.py app/src/main/assets/index.html app/src/main/assets/index.html
+          cp /tmp/dbv2.js app/src/main/assets/lighting-db-v2.js
+          echo '9e6e45647ecfac643463b7b15b14c36a6e5da6797e348f91e03645ef36f1fad5  app/src/main/assets/index.html' | sha256sum -c -
+          python3 /tmp/v308.py app/src/main/assets/index.html app/src/main/assets/index.html
+          cp /tmp/dbv3.js app/src/main/assets/lighting-db-v3.js
+          cat >> app/src/main/assets/lighting-db-v3.js <<'JS'
+
+          /* Grow-Tagebuch v308 compatibility bridge */
+          window.LIGHTING_DB_V3_META = LIGHTING_DB_V3_META;
+          window.LIGHTING_PRODUCTS_V3 = LIGHTING_PRODUCTS_V3;
+          window.LIGHTING_MAKER_ORDER_V3 = LIGHTING_DB_V3_META.makerSortOrder;
+          window.mergeLightingProductsV3 = mergeLightingProductsV3;
+          window.lightingProductsByMakerV3 = lightingProductsByMakerV3;
+          window.lightingSeriesByMakerV3 = lightingSeriesByMakerV3;
+          window.lightingImageForV3 = lightingImageForV3;
+          JS
+          rm -f app/src/main/assets/lighting-db-v2.js
+          echo 'ed77476c1cba727fb2377523e532ff2680078ed518e885fa89726f184e0b92c1  app/src/main/assets/index.html' | sha256sum -c -
+          echo '63e79f0fdd3e1523324a58b1e213b41748cdbda6e10af35d4dff66cff8a67a69  app/src/main/assets/lighting-db-v3.js' | sha256sum -c -
+      - name: Full preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check app/src/main/assets/lighting-db-v3.js
+          node - <<'JS'
+          const fs=require('fs'),vm=require('vm'),c={window:{}}; vm.createContext(c); vm.runInContext(fs.readFileSync('app/src/main/assets/lighting-db-v3.js','utf8'),c); const r=c.window.LIGHTING_PRODUCTS_V3;
+          if(!Array.isArray(r)||r.length!==347||new Set(r.map(x=>x.id)).size!==347||new Set(r.map(x=>x.maker)).size!==20||r.filter(x=>x.maker==='SANlight').length!==55) throw Error('DB integrity');
+          if(typeof c.window.mergeLightingProductsV3!=='function'||c.window.LIGHTING_MAKER_ORDER_V3.length!==20) throw Error('browser bridge'); console.log('DB+bridge OK');
+          JS
+          python3 - <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+          import re,subprocess,collections
+          s=Path('app/src/main/assets/index.html').read_text()
+          assert s.rstrip().lower().endswith('</html>')
+          class P(HTMLParser):
+            def __init__(self): super().__init__(); self.ids=[]
+            def handle_starttag(self,t,a): self.ids += [v for k,v in a if k=='id' and v]
+          p=P(); p.feed(s); assert not [x for x,n in collections.Counter(p.ids).items() if n>1]
+          js=re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script\s*>',s,re.I|re.S)
+          for i,j in enumerate(js):
+            f=Path('/tmp')/f'inline{i}.js'; f.write_text(j); subprocess.run(['node','--check',str(f)],check=True)
+          for x in ['calendarBody','calendarToggle','action2Routinecheck','a2SliderPanel','a2RoutineSensorFill','a2RoutineWeightFeelSlider','h5179RangeTabs','h5179CustomFrom','h5179CustomTo','materialEntries']: assert x in p.ids,x
+          for x in ['lighting-db-v3.js','mergeLightingProductsV3(before)','lightingGenerationViewV3','activeLightingGeneration','v308-lighting-db-v3-recovery','LIGHTING_MAKER_ORDER_V3']: assert x in s,x
+          assert 'lighting-db-v2.js' not in s
+          print('HTML/JS/DOM/navigation preflight OK',len(js),'scripts',len(p.ids),'ids')
+          PY
+      - name: Configure test package
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('app/build.gradle'); s=p.read_text().replace("applicationId 'de.harryjane.growtagebuch'","applicationId 'de.harryjane.growtagebuch.v308test'"); s=re.sub(r'versionCode\s+\d+','versionCode 308',s,1); s=re.sub(r"versionName\s+'[^']+'","versionName '308-lighting-db-v3-recovery'",s,1); p.write_text(s)
+          p=Path('app/src/main/AndroidManifest.xml'); s=p.read_text().replace('android:label="Grow-Tagebuch"','android:label="Grow-Tagebuch v308 Test"'); p.write_text(s)
+          PY
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.9' }
+      - name: Build APK
+        run: gradle --no-daemon assembleDebug
+      - name: Verify packaged APK
+        shell: bash
+        run: |
+          set -euo pipefail; mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk dist/Grow-Tagebuch-v308-Beleuchtungsdatenbank-v3-Recovery-Test.apk
+          unzip -t dist/Grow-Tagebuch-v308-Beleuchtungsdatenbank-v3-Recovery-Test.apk >/dev/null
+          unzip -p dist/Grow-Tagebuch-v308-Beleuchtungsdatenbank-v3-Recovery-Test.apk assets/index.html | grep -q 'v308-lighting-db-v3-recovery'
+          unzip -p dist/Grow-Tagebuch-v308-Beleuchtungsdatenbank-v3-Recovery-Test.apk assets/lighting-db-v3.js > /tmp/apkdb.js
+          echo '63e79f0fdd3e1523324a58b1e213b41748cdbda6e10af35d4dff66cff8a67a69  /tmp/apkdb.js' | sha256sum -c -
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Grow-Tagebuch-v308-Beleuchtung-v3-Recovery-Test-APK
+          path: dist/Grow-Tagebuch-v308-Beleuchtungsdatenbank-v3-Recovery-Test.apk
+          retention-days: 30
