@@ -6,6 +6,7 @@ on:
     paths:
       - 'app/**'
       - '.github/v306/**'
+      - 'scripts/**'
       - '.github/workflows/build-grow-v306-apk.yml'
   workflow_dispatch:
 
@@ -25,36 +26,44 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Reconstruct and verify v306 patch
+      - name: Reconstruct clean v306 transformer
         shell: bash
         run: |
           set -euo pipefail
-          echo '6fac530737e23446559018c63d30598814cdb4a4a7def7063f4bbf9426f153d9  .github/v306/v306-patch.js.gz.b64' | sha256sum -c -
-          tr -d '\n\r' < .github/v306/v306-patch.js.gz.b64 | base64 --decode | gzip -dc > app/src/main/assets/v306-patch.js
-          echo 'abd40c001b07491e281bd28b2a5e145fa3daaec6a697b45f53f2ac6d683f1ccf  app/src/main/assets/v306-patch.js' | sha256sum -c -
-          node --check app/src/main/assets/v306-patch.js
+          echo '27ebfc22aaa58d15eaada768d4a78eb4c48898bcd8a06aa8a2ed8a243fcfb756  .github/v306/apply_v306.py.gz.b64' | sha256sum -c -
+          tr -d '\n\r' < .github/v306/apply_v306.py.gz.b64 | base64 --decode | gzip -dc > /tmp/apply_v306.py
+          echo '3dd9305f89fb993a7fda7c8c87ab15638b4d740fd4e01cedc5e4ab76708bd1ac  /tmp/apply_v306.py' | sha256sum -c -
 
-      - name: Inject v306 patch and preflight HTML
+      - name: Apply v306 and run HTML preflight
         shell: bash
         run: |
           set -euo pipefail
+          python3 /tmp/apply_v306.py
+          echo '1a4116cf700ba7ce3ad9b4f2dbd4b279b568127140b4b28dfdc64b2f6e47c56b  app/src/main/assets/index.html' | sha256sum -c -
           python3 - <<'PY'
           from pathlib import Path
+          import re, subprocess, collections, tempfile
           p=Path('app/src/main/assets/index.html')
           s=p.read_text(encoding='utf-8')
-          tag='<script src="v306-patch.js"></script>'
-          if tag not in s:
-              if '</body>' not in s:
-                  raise SystemExit('index.html has no </body>')
-              s=s.replace('</body>',tag+'\n</body>',1)
-          p.write_text(s,encoding='utf-8')
           if not s.rstrip().lower().endswith('</html>'):
               raise SystemExit('content after </html>')
-          if s.count('id="gardenMain"') > 1:
-              raise SystemExit('duplicate gardenMain')
+          ids=re.findall(r'\bid=["\']([^"\']+)["\']',s)
+          dup=[k for k,v in collections.Counter(ids).items() if v>1]
+          if dup:
+              raise SystemExit('duplicate IDs: '+', '.join(dup[:20]))
+          scripts=re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script\s*>',s,re.I|re.S)
+          for i,js in enumerate(scripts):
+              f=Path('/tmp')/f'v306_inline_{i}.js'
+              f.write_text(js,encoding='utf-8')
+              subprocess.run(['node','--check',str(f)],check=True)
+          required=['calendarBody','calendarToggle','action2Routinecheck','a2SliderPanel','a2RoutineSensorFill','a2RoutineWeightFeelSlider','h5179RangeTabs','h5179CustomFrom','h5179CustomTo']
+          missing=[x for x in required if f'id="{x}"' not in s]
+          if missing:
+              raise SystemExit('missing nodes: '+', '.join(missing))
+          print(f'preflight OK: {len(scripts)} inline scripts, {len(ids)} IDs')
           PY
 
-      - name: Prepare v306 side-by-side test package
+      - name: Prepare side-by-side v306 test package
         shell: bash
         run: |
           set -euo pipefail
