@@ -36,7 +36,7 @@ jobs:
           } | tr -d '\n\r' | base64 -d > /tmp/dbv3.js.xz
           echo 'b1ff4b240d71d3387d84053ce1cf4a4d3a566a3eccd34e2abe020148bf7dc3f3  /tmp/dbv3.js.xz' | sha256sum -c -
           xz -dc /tmp/dbv3.js.xz > /tmp/dbv3.js
-          echo '58a1c2e93bbe9acda24e8d9bfc1a549cd3d52954cf95b37482c069842444090f  /tmp/dbv3.js' | sha256sum -c -
+          echo '6695cf157e1d694f84719c4af778632e8604170a858c687dc98106a9a1adf302  /tmp/dbv3.js' | sha256sum -c -
           python3 -m py_compile /tmp/v306.py /tmp/v307.py /tmp/v308.py
       - name: Apply app migrations
         shell: bash
@@ -99,7 +99,7 @@ jobs:
           unzip -t dist/Grow-Tagebuch-v308-Beleuchtungsdatenbank-v3-Recovery-Test.apk >/dev/null
           unzip -p dist/Grow-Tagebuch-v308-Beleuchtungsdatenbank-v3-Recovery-Test.apk assets/index.html | grep -q 'v308-lighting-db-v3-recovery'
           unzip -p dist/Grow-Tagebuch-v308-Beleuchtungsdatenbank-v3-Recovery-Test.apk assets/lighting-db-v3.js > /tmp/apkdb.js
-          echo '58a1c2e93bbe9acda24e8d9bfc1a549cd3d52954cf95b37482c069842444090f  /tmp/apkdb.js' | sha256sum -c -
+          echo '6695cf157e1d694f84719c4af778632e8604170a858c687dc98106a9a1adf302  /tmp/apkdb.js' | sha256sum -c -
       - uses: actions/upload-artifact@v4
         with:
           name: Grow-Tagebuch-v308-Beleuchtung-v3-Recovery-Test-APK
