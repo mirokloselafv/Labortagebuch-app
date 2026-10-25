@@ -58,12 +58,21 @@ jobs:
           tr -d '\n\r' < .github/v310/apply_v310.py.gz.b64 | base64 --decode | gzip -dc > /tmp/apply_v310.py
           echo '33b4ea1c2199f5c39699c7b145bd6c25f7e812402aed17b8f3fa46064fdd87f8  /tmp/apply_v310.py' | sha256sum -c -
 
-          tr -d '\n\r' < .github/v311/v311bundle2.tar.gz.b64 | base64 --decode > /tmp/v311bundle.tar.gz
-          echo '380ca5b5fadc41d866da9461d7ab96993da6d72983a06f8cc796eb51600560a2  /tmp/v311bundle.tar.gz' | sha256sum -c -
+          tr -d '\n\r' < .github/v311/v311bundle.tar.gz.b64 | base64 --decode > /tmp/v311bundle.tar.gz
+          echo '2c262a57ec2b0c8c2def312bd72c2f159c465571b0f9aa4045c002f8e5bc6334  /tmp/v311bundle.tar.gz' | sha256sum -c -
           mkdir -p /tmp/v311bundle
           tar -xzf /tmp/v311bundle.tar.gz -C /tmp/v311bundle
           echo 'ff643d3487b07e6d9c712cb61762cf45c75f2ef2431ec52500c6e4f1055cc0c1  /tmp/v311bundle/apply_v311.py' | sha256sum -c -
           echo 'b2b30b7213fcde4332c5fca751af267577a45d3ea3f96db119cdb6653c707d7a  /tmp/v311bundle/MainActivity.java' | sha256sum -c -
+          python3 - <<'PYFIX'
+          from pathlib import Path
+          p=Path('/tmp/v311bundle/H5179ScanService.java')
+          s=p.read_text()
+          old='handler.postDelayed(()->{if(syncing)finishSync("Gerätespeicher: Zeitüberschreitung")},90000);'
+          new='handler.postDelayed(()->{if(syncing)finishSync("Gerätespeicher: Zeitüberschreitung");},90000);'
+          if old not in s or s.count(old)!=1: raise SystemExit('H5179 compile-fix target invalid')
+          p.write_text(s.replace(old,new,1))
+          PYFIX
           echo 'e57cc52f375f00e5370e452eea21a5e4f4f6e35b49f09d1f41d392474ffb34f2  /tmp/v311bundle/H5179ScanService.java' | sha256sum -c -
           echo 'e9d257edc3f392825ddd4b07a9417ce118671024b66868edfc388e61207ae68e  /tmp/v311bundle/SensorDbHelper.java' | sha256sum -c -
           python3 -m py_compile /tmp/apply_v306.py /tmp/apply_v307.py /tmp/apply_v308.py /tmp/apply_v310.py /tmp/v311bundle/apply_v311.py
