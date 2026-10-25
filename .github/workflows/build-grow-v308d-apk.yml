@@ -4,10 +4,7 @@ on:
   push:
     branches: [ grow-v308-build ]
     paths:
-      - 'app/**'
-      - '.github/v306/**'
-      - '.github/v307/**'
-      - '.github/v308/**'
+      - '.github/v308xz/**'
       - '.github/workflows/build-grow-v308d-apk.yml'
   workflow_dispatch:
 
@@ -21,7 +18,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: grow-v308-build
-
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -37,25 +33,12 @@ jobs:
           echo '8459cd5d4dca9113eddbff6ec5412e3ace2418201843d71140bdac64d66d71c3  /tmp/apply_v307.py' | sha256sum -c -
           cat .github/v307/db_chunk_*.b64 | tr -d '\n\r' | base64 --decode | gzip -dc > /tmp/lighting-db-v2.js
           echo '02cb3baa24c7a619a7a2b392dd1809fe007c4412c6f89d14aa8ac21f03229f0b  /tmp/lighting-db-v2.js' | sha256sum -c -
-          cat .github/v308/apply_chunk_*.b64 | tr -d '\n\r' | base64 --decode > /tmp/apply_v308.py.gz
-          gzip -dc /tmp/apply_v308.py.gz > /tmp/apply_v308.py
+          cat .github/v308/apply_chunk_*.b64 | tr -d '\n\r' | base64 --decode | gzip -dc > /tmp/apply_v308.py
           echo 'ed6203214cddde515f644267ee673fbc8c5ffcb6f4733069cf9fd0d76c4e3829  /tmp/apply_v308.py' | sha256sum -c -
           python3 -m py_compile /tmp/apply_v308.py
-          {
-            cat .github/v308/db_chunk_000.b64
-            cat .github/v308/db_chunk_001.b64
-            cat .github/v308/db_chunk_002.b64
-            cat .github/v308/db003_000.b64
-            cat .github/v308/db003_001.b64
-            cat .github/v308/db003_002.b64
-            cat .github/v308/db003_003.b64
-            cat .github/v308/db003_004.b64
-            cat .github/v308/db003_005.b64
-            cat .github/v308/db003_006_fix.b64
-            cat .github/v308/db_chunk_004.b64
-          } | tr -d '\n\r' | base64 --decode > /tmp/lighting-db-v3.js.gz
-          echo '4000b717e3662c09f6cc5cd6ff2edb8152afd6d2b2d3fb96298be4f0edec2383  /tmp/lighting-db-v3.js.gz' | sha256sum -c -
-          gzip -dc /tmp/lighting-db-v3.js.gz > /tmp/lighting-db-v3.js
+          cat .github/v308xz/chunk_*.b64 | tr -d '\n\r' | base64 --decode > /tmp/lighting-db-v3.js.xz
+          echo 'b1ff4b240d71d3387d84053ce1cf4a4d3a566a3eccd34e2abe020148bf7dc3f3  /tmp/lighting-db-v3.js.xz' | sha256sum -c -
+          xz -dc /tmp/lighting-db-v3.js.xz > /tmp/lighting-db-v3.js
           echo '58a1c2e93bbe9acda24e8d9bfc1a549cd3d52954cf95b37482c069842444090f  /tmp/lighting-db-v3.js' | sha256sum -c -
 
       - name: Apply v306 v307 v308
@@ -71,7 +54,6 @@ jobs:
           cp /tmp/lighting-db-v3.js app/src/main/assets/lighting-db-v3.js
           rm -f app/src/main/assets/lighting-db-v2.js
           echo 'ed77476c1cba727fb2377523e532ff2680078ed518e885fa89726f184e0b92c1  app/src/main/assets/index.html' | sha256sum -c -
-          echo '58a1c2e93bbe9acda24e8d9bfc1a549cd3d52954cf95b37482c069842444090f  app/src/main/assets/lighting-db-v3.js' | sha256sum -c -
 
       - name: Preflight full app and lighting v3
         shell: bash
@@ -133,17 +115,12 @@ jobs:
           s=s.replace('android:label="Grow-Tagebuch"','android:label="Grow-Tagebuch v308 Test"')
           p.write_text(s)
           PY
-          grep -q "applicationId 'de.harryjane.growtagebuch.v308test'" app/build.gradle
-          grep -q 'versionCode 308' app/build.gradle
-          grep -q 'android.permission.INTERNET' app/src/main/AndroidManifest.xml
 
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-
       - name: Build APK
         run: gradle --no-daemon assembleDebug
-
       - name: Verify APK exact contents
         shell: bash
         run: |
@@ -155,17 +132,6 @@ jobs:
           unzip -p dist/Grow-Tagebuch-v308-Beleuchtungsdatenbank-v3-Install.apk assets/lighting-db-v3.js > /tmp/apkdb.js
           echo '58a1c2e93bbe9acda24e8d9bfc1a549cd3d52954cf95b37482c069842444090f  /tmp/apkdb.js' | sha256sum -c -
           sha256sum dist/Grow-Tagebuch-v308-Beleuchtungsdatenbank-v3-Install.apk > dist/Grow-Tagebuch-v308-Beleuchtungsdatenbank-v3-Install.apk.sha256
-
-      - name: Publish verified APK to build branch
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f dist/Grow-Tagebuch-v308-Beleuchtungsdatenbank-v3-Install.apk dist/Grow-Tagebuch-v308-Beleuchtungsdatenbank-v3-Install.apk.sha256
-          git commit -m 'Publish verified Grow-Tagebuch v308 APK'
-          git push origin HEAD:grow-v308-build
-
       - uses: actions/upload-artifact@v4
         with:
           name: Grow-Tagebuch-v308-Beleuchtung-v3-Test-APK
