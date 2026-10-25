@@ -1,0 +1,19 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'de.harryjane.growtagebuch'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'de.harryjane.growtagebuch'
+        minSdk 26
+        targetSdk 35
+        versionCode 305
+        versionName '3.03-stable-h5179-statistics'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
